@@ -30,6 +30,17 @@ class PathPlannerNode(Node):
     def costmap_callback(self, msg):
         # This callback will be called when the costmap is received
         self.global_costmap = msg
+    
+        # Print the type of the received message
+        self.get_logger().info(f"Global costmap type: {type(self.global_costmap)}")
+    
+        # Print the data of the costmap (first 10 entries for a quick look)
+        self.get_logger().info(f"Global costmap data (first 10 entries): {self.global_costmap.data[:10]}")
+    
+        # Print the shape of the costmap data (width and height)
+        width = self.global_costmap.info.width
+        height = self.global_costmap.info.height
+        self.get_logger().info(f"Global costmap shape (width x height): {width} x {height}")
 
     def create_plan_cb(self, request, response):
         if self.global_costmap is None:
