@@ -26,6 +26,8 @@ class PathPlannerNode(Node):
 
         # Retrieve the global costmap
         global_costmap = self.basic_navigator.getGlobalCostmap()
+        self.get_logger().info(f"Global costmap type: {type(global_costmap)}")
+
         costmap = global_costmap.data
         width = global_costmap.info.width
         height = global_costmap.info.height
