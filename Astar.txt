@@ -1,68 +1,54 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from nav_msgs.msg import Path, OccupancyGrid
+from nav_msgs.msg import OccupancyGrid, Path
 from geometry_msgs.msg import PoseStamped
 from create_plan_msgs.srv import CreatePlan
 from nav2_simple_commander.robot_navigator import BasicNavigator
 import heapq
 
-
 class PathPlannerNode(Node):
     def __init__(self):
         super().__init__("path_planner_node")
 
-        # Initialize BasicNavigator to get the global costmap
-        self.basic_navigator = BasicNavigator()
+        # Initialize attributes for the costmap
+        self.global_costmap = None
+        self.costmap_sub = self.create_subscription(
+            OccupancyGrid,
+            '/global_costmap/costmap',  # Adjust this topic name if needed
+            self.global_costmap_callback,
+            10
+        )
 
         # Create a service "create_plan"
         self.srv = self.create_service(CreatePlan, 'create_plan', self.create_plan_cb)
 
-    def create_plan_cb(self, request, response):
-        # Get start and goal poses
-        start_pose = request.start
-        goal_pose = request.goal
-        time_now = self.get_clock().now().to_msg()
 
-        # Retrieve the global costmap
-        global_costmap = self.basic_navigator.getGlobalCostmap()
-        if global_costmap is None:
+    def global_costmap_callback(self, msg):
+        """Callback to store the global costmap."""
+        self.global_costmap = msg
+
+    def create_plan_cb(self, request, response):
+        # Ensure the global costmap is available
+        if self.global_costmap is None:
             self.get_logger().error("Global costmap not available")
             return response
 
-        costmap = global_costmap.data  # The 1D array of costmap data
-        width = global_costmap.info.width  # Width of the costmap
-        height = global_costmap.info.height  # Height of the costmap
-        resolution = global_costmap.info.resolution  # Resolution (meters per cell)
-        origin = global_costmap.info.origin  # Origin of the costmap (PoseStamped)
-
-        # Convert the costmap data into a 2D array
-        costmap_2d = [
-            costmap[i * width:(i + 1) * width]
-            for i in range(height)
-        ]
+        costmap = self.global_costmap.data  # The 1D array of costmap data
+        width = self.global_costmap.info.width  # Width of the costmap
+        height = self.global_costmap.info.height  # Height of the costmap
+        resolution = self.global_costmap.info.resolution  # Resolution of the costmap
+        origin = self.global_costmap.info.origin  # Origin of the costmap
 
         # Plan the path using A* algorithm
         response.path = a_star_planner(
-            start_pose, goal_pose, costmap_2d, resolution, origin, time_now
+            request.start, request.goal, costmap, resolution, origin, self.get_clock().now().to_msg(), width, height
         )
         return response
 
-
-def a_star_planner(start, goal, costmap, resolution, origin, time_now):
+def a_star_planner(start, goal, costmap, resolution, origin, time_now, width, height):
     """
     A* algorithm to compute a path avoiding obstacles.
-
-    Args:
-        start (PoseStamped): Start pose.
-        goal (PoseStamped): Goal pose.
-        costmap (list of lists): 2D costmap grid.
-        resolution (float): Resolution of the grid (meters per cell).
-        origin (PoseStamped): Origin of the costmap (bottom-left corner).
-        time_now (Time): Current ROS2 time.
-
-    Returns:
-        Path: Computed path as a nav_msgs.msg.Path.
     """
     path = Path()
     path.header.frame_id = goal.header.frame_id
@@ -115,13 +101,16 @@ def a_star_planner(start, goal, costmap, resolution, origin, time_now):
         ]
 
         for neighbor in neighbors:
-            # Skip if neighbor is out of bounds or in obstacle
+            # Ensure that the neighbor is within bounds
             if (neighbor[0] < 0 or neighbor[1] < 0 or
-                    neighbor[0] >= len(costmap[0]) or neighbor[1] >= len(costmap)):
+                    neighbor[0] >= width or neighbor[1] >= height):
                 continue
 
+            # Calculate the index in the 1D costmap array
+            index = neighbor[1] * width + neighbor[0]
+
             # Skip obstacles (threshold 50 as per costmap)
-            if costmap[neighbor[1]][neighbor[0]] > 50:
+            if costmap[index] > 50:
                 continue
 
             # Calculate tentative g-score
@@ -137,7 +126,6 @@ def a_star_planner(start, goal, costmap, resolution, origin, time_now):
     # If no path is found, return an empty path
     return path
 
-
 def main(args=None):
     rclpy.init(args=args)
     path_planner_node = PathPlannerNode()
@@ -149,7 +137,6 @@ def main(args=None):
 
     path_planner_node.destroy_node()
     rclpy.try_shutdown()
-
 
 if __name__ == '__main__':
     main()
