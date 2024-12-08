@@ -20,7 +20,7 @@ class PathPlannerNode(Node):
         # Subscribe to the costmap topic
         self.costmap_subscriber = self.create_subscription(
             OccupancyGrid,
-            '/costmap',  # Ensure this matches the topic in your system
+            '/global_costmap/costmap',  # Ensure this matches the topic in your system
             self.costmap_callback,
             10
         )
