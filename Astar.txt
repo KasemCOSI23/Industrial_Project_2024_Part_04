@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from create_plan_msgs.srv import CreatePlan
@@ -59,7 +58,7 @@ def a_star_planner(start, goal, costmap, resolution, origin, time_now):
         time_now (Time): Current ROS2 time.
 
     Returns:
-        Path: Computed path as a `nav_msgs.msg.Path`.
+        Path: Computed path as a nav_msgs.msg.Path.
     """
     path = Path()
     path.header.frame_id = goal.header.frame_id
@@ -108,14 +107,17 @@ def a_star_planner(start, goal, costmap, resolution, origin, time_now):
         # Get neighbors
         neighbors = [
             (current[0] + dx, current[1] + dy)
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]  # 4-connected grid
         ]
 
         for neighbor in neighbors:
             # Skip if neighbor is out of bounds or in obstacle
             if (neighbor[0] < 0 or neighbor[1] < 0 or
-                    neighbor[0] >= len(costmap) or neighbor[1] >= len(costmap[0]) or
-                    costmap[neighbor[1]][neighbor[0]] > 50):  # Threshold for obstacles
+                    neighbor[0] >= len(costmap[0]) or neighbor[1] >= len(costmap)):
+                continue
+
+            # Skip obstacles (threshold 50 as per costmap)
+            if costmap[neighbor[1]][neighbor[0]] > 50:
                 continue
 
             # Calculate tentative g-score
