@@ -10,6 +10,8 @@ import heapq
 class PathPlannerNode(Node):
     def __init__(self):
         super().__init__("path_planner_node")
+        # Initialize BasicNavigator to get the global costmap (but we are also subscribing manually)
+        self.basic_navigator = BasicNavigator()
         # Create a service "create_plan"
         self.srv = self.create_service(CreatePlan, 'create_plan', self.create_plan_cb)
 
