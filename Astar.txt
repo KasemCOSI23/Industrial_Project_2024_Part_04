@@ -10,18 +10,17 @@ import heapq
 class PathPlannerNode(Node):
     def __init__(self):
         super().__init__("path_planner_node")
+        # Create a service "create_plan"
+        self.srv = self.create_service(CreatePlan, 'create_plan', self.create_plan_cb)
 
         # Initialize attributes for the costmap
-        self.global_costmap = None
-        self.costmap_sub = self.create_subscription(
+        self.global_costmap = self.create_subscription(
             OccupancyGrid,
             '/global_costmap/costmap',  # Adjust this topic name if needed
             self.global_costmap_callback,
             10
         )
 
-        # Create a service "create_plan"
-        self.srv = self.create_service(CreatePlan, 'create_plan', self.create_plan_cb)
 
 
     def global_costmap_callback(self, msg):
