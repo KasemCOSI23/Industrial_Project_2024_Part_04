@@ -30,17 +30,6 @@ class PathPlannerNode(Node):
     def costmap_callback(self, msg):
         # This callback will be called when the costmap is received
         self.global_costmap = msg
-    
-        # Print the type of the received message
-        self.get_logger().info(f"Global costmap type: {type(self.global_costmap)}")
-    
-        # Print the data of the costmap (first 10 entries for a quick look)
-        self.get_logger().info(f"Global costmap data (first 10 entries): {self.global_costmap.data[:10]}")
-    
-        # Print the shape of the costmap data (width and height)
-        width = self.global_costmap.info.width
-        height = self.global_costmap.info.height
-        self.get_logger().info(f"Global costmap shape (width x height): {width} x {height}")
 
     def create_plan_cb(self, request, response):
         if self.global_costmap is None:
@@ -56,11 +45,11 @@ class PathPlannerNode(Node):
 
         # Plan the path using A* algorithm
         response.path = a_star_planner(
-            request.start, request.goal, costmap, resolution, origin, self.get_clock().now().to_msg()
+            request.start, request.goal, costmap, resolution, origin, self.get_clock().now().to_msg(), width, height
         )
         return response
 
-def a_star_planner(start, goal, costmap, resolution, origin, time_now):
+def a_star_planner(start, goal, costmap, resolution, origin, time_now, width, height):
     """
     A* algorithm to compute a path avoiding obstacles.
     """
@@ -115,13 +104,16 @@ def a_star_planner(start, goal, costmap, resolution, origin, time_now):
         ]
 
         for neighbor in neighbors:
-            # Skip if neighbor is out of bounds or in obstacle
+            # Ensure that the neighbor is within bounds
             if (neighbor[0] < 0 or neighbor[1] < 0 or
-                    neighbor[0] >= len(costmap[0]) or neighbor[1] >= len(costmap)):
+                    neighbor[0] >= width or neighbor[1] >= height):
                 continue
 
+            # Calculate the index in the 1D costmap array
+            index = neighbor[1] * width + neighbor[0]
+
             # Skip obstacles (threshold 50 as per costmap)
-            if costmap[neighbor[1] * len(costmap[0]) + neighbor[0]] > 50:
+            if costmap[index] > 50:
                 continue
 
             # Calculate tentative g-score
