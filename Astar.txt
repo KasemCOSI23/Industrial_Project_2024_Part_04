@@ -14,14 +14,14 @@ class PathPlannerNode(Node):
         self.srv = self.create_service(CreatePlan, 'create_plan', self.create_plan_cb)
 
         # Initialize attributes for the costmap
-        self.global_costmap = self.create_subscription(
+        self.costmap_subscriber  = self.create_subscription(
             OccupancyGrid,
             '/global_costmap/costmap',  # Adjust this topic name if needed
             self.global_costmap_callback,
             10
         )
 
-
+        self.global_costmap = None
 
     def global_costmap_callback(self, msg):
         """Callback to store the global costmap."""
